@@ -1,25 +1,536 @@
-import logo from './logo.svg';
-import './App.css';
+import{useState,useEffect,useCallback}from"react"
+import { Home, Package, ChefHat, Calendar, ShoppingCart, Bell } from "lucide-react"
+import {AlertTriangle} from "lucide-react"
+const CATEGORIES=["Vegetables","Fruits","Dairy","Grains","Pulses","Spices","Packed","Others"]
+const DIET_OPTIONS=["Vegetarian","Eggetarian","Vegan","Non-Vegetarian"]
+const TIME_OPTIONS=[10,20,30,45,60]
+const MEAL_TYPES=["Breakfast","Lunch","Dinner","Snacks"]
+const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+const DEFAULT_INGREDIENTS={Vegetables:["Tomato","Onion","Potato","Carrot","Capsicum","Spinach","Cauliflower","Peas","Ginger","Garlic","Green Chilli","Coriander","Lemon","Brinjal"],Fruits:["Banana","Apple","Mango","Grapes","Orange","Papaya","Guava"],Dairy:["Milk","Curd/Yogurt","Paneer","Butter","Ghee","Cheese"],Grains:["Rice","Wheat Flour","Atta","Semolina/Rava","Poha","Oats","Bread"],Pulses:["Toor Dal","Moong Dal","Chana Dal","Rajma","Chana","Urad Dal","Masoor Dal"],Spices:["Cumin","Mustard Seeds","Turmeric","Red Chilli Powder","Coriander Powder","Garam Masala","Salt","Pepper","Hing"],Packed:["Pasta","Noodles","Cornflakes","Tomato Puree","Coconut Milk","Soy Sauce"],Others:["Sugar","Oil","Coconut","Dry Fruits","Honey","Tea","Coffee"]}
+const NAV=[
+ {id:"home",icon:Home,label:"Home"},
+ {id:"inventory",icon:Package,label:"Inventory"},
+ {id:"recipes",icon:ChefHat,label:"Recipes"},
+ {id:"planner",icon:Calendar,label:"Planner"},
+ {id:"grocery",icon:ShoppingCart,label:"Grocery"},
+ {id:"alerts",icon:Bell,label:"Alerts"}
+]
+const GS=`
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700;800&display=swap');
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',sans-serif;background:#FFF8F3}
+::-webkit-scrollbar{display:none}
+.hov{transition:transform .2s,box-shadow .2s;cursor:pointer}
+.hov:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.11)!important}
+.up{animation:up .35s ease both}
+.pulse{animation:pulse 1.5s ease infinite}
+input,select,button{font-family:'Nunito',sans-serif}
+`
+const IS={width:"100%",border:"1.5px solid #E8E8E8",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",background:"#FAFAFA",marginBottom:10}
+function SG(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function SS(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+function dl(expiry){return Math.ceil((new Date(expiry)-new Date())/86400000)}
+const Spin=({w})=><div style={{width:18,height:18,border:`2px solid ${w?"rgba(255,255,255,.4)":"rgba(255,107,53,.3)"}`,borderTopColor:w?"white":"#FF6B35",borderRadius:"50%",animation:"spin .8s linear infinite",display:"inline-block"}}/>
+const Tag=({icon,text,c})=><span style={{background:"#F5F5F5",borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700,color:c||"#666",display:"inline-flex",alignItems:"center",gap:3}}>{icon} {text}</span>
+const FB=({label,active,onClick})=><button onClick={onClick} style={{background:active?"#FF6B35":"white",color:active?"white":"#666",border:`1.5px solid ${active?"#FF6B35":"#E0E0E0"}`,borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .18s",whiteSpace:"nowrap",flexShrink:0}}>{label}</button>
+const ST=({ch})=><div style={{fontFamily:"'Playfair Display',serif",fontSize:22,fontWeight:800,color:"#222",marginBottom:4}}>{ch}</div>
+const Sub=({ch})=><div style={{color:"#999",fontSize:13,fontWeight:600,marginBottom:16}}>{ch}</div>
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+function StatCard({icon,value,label,color,onClick}){
+  return <div onClick={onClick} className="hov" style={{background:"white",borderRadius:16,padding:"14px 10px",textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,.06)",border:`1.5px solid ${color}33`}}>
+    <div style={{fontSize:24,marginBottom:4}}>{icon}</div>
+    <div style={{fontWeight:900,fontSize:24,color}}>{value}</div>
+    <div style={{fontSize:10,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:.5,marginTop:2}}>{label}</div>
+  </div>
 }
 
-export default App;
+function RecipeCard({recipe,expanded,onToggle,addToGrocery}){
+  const dc={Easy:"#4CAF50",Medium:"#FF9800",Hard:"#E53935"}
+  return <div className="hov up" style={{background:"white",borderRadius:18,marginBottom:14,boxShadow:"0 3px 16px rgba(0,0,0,.07)",border:"1.5px solid #F0F0F0",overflow:"hidden"}}>
+    <div onClick={onToggle} style={{padding:16,cursor:onToggle?"pointer":"default"}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
+        <div style={{width:56,height:56,background:"linear-gradient(135deg,#FFF3E0,#FFE0B2)",borderRadius:14,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,flexShrink:0}}>{recipe.emoji||""}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:900,fontSize:15,color:"#222",marginBottom:5,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            {recipe.name}
+            {recipe.usesExpiring&&<span style={{background:"linear-gradient(135deg,#FF6B35,#F7931E)",color:"white",borderRadius:6,padding:"1px 7px",fontSize:9,fontWeight:800}}>USE SOON</span>}
+          </div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <Tag icon="" text={`${recipe.time}m`}/><Tag icon="" text={`${recipe.servings}`}/><Tag icon="" text={recipe.difficulty||"Easy"} c={dc[recipe.difficulty]||"#4CAF50"}/>
+          </div>
+        </div>
+        {onToggle&&<span style={{color:"#CCC",fontSize:16,transform:expanded?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0,marginTop:4}}>▼</span>}
+      </div>
+      {recipe.description&&<div style={{marginTop:10,fontSize:13,color:"#777",lineHeight:1.6}}>{recipe.description}</div>}
+      {recipe.nutrition&&<div style={{display:"flex",gap:7,marginTop:12,overflowX:"auto",paddingBottom:2}}>
+        {[[recipe.nutrition.calories,"kcal"],[recipe.nutrition.protein,"g prot"],[recipe.nutrition.carbs,"g carbs"],[recipe.nutrition.fat,"g fat"],[recipe.nutrition.fiber,"g fiber"]].map(([ic,v,u])=><div key={u} style={{flexShrink:0,background:"#FFF8F3",borderRadius:9,padding:"6px 10px",textAlign:"center",border:"1.5px solid #FFE5D5"}}>
+          <div style={{fontSize:13}}>{ic}</div><div style={{fontWeight:900,fontSize:13,color:"#333"}}>{v||0}</div><div style={{fontSize:9,color:"#AAA",whiteSpace:"nowrap"}}>{u}</div>
+        </div>)}
+      </div>}
+    </div>
+    {expanded&&<div style={{borderTop:"1.5px solid #F5F5F5",padding:"0 16px 16px",animation:"up .3s ease"}}>
+      <div style={{paddingTop:14,marginBottom:14}}>
+        <div style={{fontWeight:800,fontSize:13,color:"#333",marginBottom:8}}>Ingredients</div>
+        {recipe.ingredients?.map((ing,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px dashed #F0F0F0"}}><span style={{fontSize:13,color:"#555",fontWeight:600}}>{ing.name}</span><span style={{fontSize:12,color:"#AAA",fontWeight:700}}>{ing.amount}</span></div>)}
+      </div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontWeight:800,fontSize:13,color:"#333",marginBottom:8}}>How to Cook</div>
+        {recipe.steps?.map((s,i)=><div key={i} style={{display:"flex",gap:10,marginBottom:10}}>
+          <div style={{width:24,height:24,background:"linear-gradient(135deg,#FF6B35,#F7931E)",borderRadius:"50%",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0,marginTop:1}}>{i+1}</div>
+          <div style={{fontSize:13,color:"#555",lineHeight:1.6}}>{s}</div>
+        </div>)}
+      </div>
+      {addToGrocery&&recipe.ingredients&&<button onClick={()=>recipe.ingredients.forEach(i=>addToGrocery(i.name))} style={{width:"100%",background:"#E8F5E9",color:"#2E7D32",border:"1.5px solid #81C784",borderRadius:11,padding:"11px",fontSize:13,fontWeight:800,cursor:"pointer"}}>Add All to Grocery List</button>}
+    </div>}
+  </div>
+}
+
+export default function App(){
+  const[page,setPage]=useState("home")
+  const[inventory,setInventory]=useState(()=>SG("sti_inv",[]))
+  const[grocery,setGrocery]=useState(()=>SG("sti_groc",[]))
+  const[weekPlan,setWeekPlan]=useState(()=>SG("sti_week",null))
+  const[recipes,setRecipes]=useState([])
+  const[loadR,setLoadR]=useState(false)
+  const[loadW,setLoadW]=useState(false)
+  const[prefs,setPrefs]=useState({time:30,mealType:"Lunch",servings:2,diet:"Vegetarian",priority:""})
+  const[profile,setProfile]=useState(()=>SG("sti_prof",{diet:"Vegetarian",cookTime:30,people:2}))
+
+  useEffect(()=>SS("sti_inv",inventory),[inventory])
+  useEffect(()=>SS("sti_groc",grocery),[grocery])
+  useEffect(()=>SS("sti_week",weekPlan),[weekPlan])
+  useEffect(()=>SS("sti_prof",profile),[profile])
+
+  const expiring=inventory.filter(i=>i.expiry&&dl(i.expiry)<=3)
+
+  const ai = useCallback(async (prompt) => {
+    const response = await fetch("http://localhost:5000/recipes", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ prompt })
+    });
+    if (!response.ok) {
+      const text = await response.text()
+      console.error("Backend error:", text)
+      throw new Error("Backend error")
+    }
+    const data = await response.json()
+    if (!data.text) throw new Error("Empty AI response")
+    return data.text
+  }, [])
+
+  const suggestRecipes=useCallback(async()=>{
+    if(!inventory.length){alert("Add ingredients to inventory first!");return}
+    setLoadR(true);setRecipes([])
+    try{
+      const ing=inventory.map(i=>i.name).join(", ")
+      const exp=expiring.map(i=>i.name).join(", ")
+      const raw=await ai(`You are an expert Indian cooking assistant. Suggest 3 ${prefs.diet} recipes.
+      Available ingredients: ${ing}${exp?`\nPRIORITY - expiring soon (use these first!): ${exp}`:""}
+      Time: ${prefs.time} min | Meal type: ${prefs.mealType} | Servings: ${prefs.servings}${prefs.priority?`\nUser wants to use: ${prefs.priority}`:""}
+      Return ONLY a valid JSON array, absolutely no markdown or explanation:
+      [{"name":"string","emoji":"single emoji","time":number,"difficulty":"Easy|Medium|Hard","servings":number,"description":"one sentence","ingredients":[{"name":"string","amount":"string"}],"steps":["string"],"nutrition":{"calories":number,"protein":number,"carbs":number,"fat":number,"fiber":number},"usesExpiring":boolean}]`)
+      let clean = raw.replace(/```json/g,"").replace(/```/g,"").trim()
+      const start = clean.indexOf("[")
+      const end = clean.lastIndexOf("]")
+      if(start !== -1 && end !== -1) clean = clean.substring(start, end + 1)
+      const parsed = JSON.parse(clean)
+      setRecipes(Array.isArray(parsed)?parsed:[])
+    }catch(e){console.error(e);alert("AI suggestion failed. Check console & try again.")}
+    setLoadR(false)
+  },[inventory,expiring,prefs,ai])
+
+  const planWeek=useCallback(async()=>{
+    setLoadW(true);setWeekPlan(null)
+    try{
+      const ing=inventory.map(i=>i.name).join(", ")||"basic Indian pantry"
+      const raw=await ai(`Create a balanced 7-day Indian meal plan for a ${profile.diet} family of ${profile.people} people. Max cooking time: ${profile.cookTime} min per meal. Available ingredients: ${ing}.
+Return ONLY a valid JSON object, no markdown:
+{"Monday":{"breakfast":"string","lunch":"string","dinner":"string","snack":"string"},"Tuesday":{...},"Wednesday":{...},"Thursday":{...},"Friday":{...},"Saturday":{...},"Sunday":{...}}`)
+      setWeekPlan(JSON.parse(raw.replace(/```json|```/g,"").trim()))
+    }catch(e){console.error(e);alert("Could not generate plan. Try again.")}
+    setLoadW(false)
+  },[inventory,profile,ai])
+
+  const addInv=item=>setInventory(p=>{const e=p.find(i=>i.name===item.name&&i.category===item.category);return e?p.map(i=>i.name===item.name&&i.category===item.category?{...i,...item}:i):[...p,{...item,id:Date.now()}]})
+  const remInv=id=>setInventory(p=>p.filter(i=>i.id!==id))
+  const addGroc=name=>{if(!grocery.find(g=>g.name===name))setGrocery(p=>[...p,{id:Date.now(),name,done:false}])}
+  const togGroc=id=>setGrocery(p=>p.map(g=>g.id===id?{...g,done:!g.done}:g))
+  const remGroc=id=>setGrocery(p=>p.filter(g=>g.id!==id))
+  const cp={inventory,expiring,recipes,setPage,prefs,setPrefs,suggestRecipes,loadR,addInv,remInv,grocery,addGroc,togGroc,remGroc,weekPlan,setWeekPlan,planWeek,loadW,profile,setProfile}
+
+  return <div style={{fontFamily:"'Nunito',sans-serif",background:"#FFF8F3",minHeight:"100vh",maxWidth:480,margin:"0 auto",paddingBottom:82}}>
+    <style>{GS}</style>
+    <header style={{background:"linear-gradient(135deg,#FF6B35,#F7931E)",padding:"14px 18px 12px",position:"sticky",top:0,zIndex:100,boxShadow:"0 3px 20px rgba(255,107,53,.35)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+            <img src="/logo.png" alt="SmartThali" style={{height:48}}/>
+            <span style={{color:"white",fontFamily:"'Playfair Display', serif",fontSize:20,fontWeight:800}}>SmartThali</span>
+          </div>
+          <div style={{color:"rgba(255,255,255,.85)",fontSize:10,fontWeight:800,letterSpacing:1.2,textTransform:"uppercase"}}>Smart Cooking Assistant</div>
+        </div>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setPage("alerts")} style={{background:"rgba(255,255,255,.18)",border:"none",borderRadius:12,padding:"8px 12px",cursor:"pointer",color:"white",fontSize:19}}>
+            <Bell size={20} color="white"/>
+          </button>
+          {expiring.length>0&&<span style={{position:"absolute",top:2,right:2,background:"#FF3B30",color:"white",borderRadius:"50%",width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900}}>{expiring.length}</span>}
+        </div>
+      </div>
+    </header>
+    <main>
+      {page==="home"&&<HomePage {...cp}/>}
+      {page==="inventory"&&<InvPage {...cp}/>}
+      {page==="recipes"&&<RecipesPage {...cp}/>}
+      {page==="planner"&&<PlannerPage {...cp}/>}
+      {page==="grocery"&&<GrocPage {...cp}/>}
+      {page==="alerts"&&<AlertsPage {...cp}/>}
+    </main>
+    <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"white",borderTop:"1.5px solid #FFE5D5",display:"flex",padding:"8px 0 14px",boxShadow:"0 -4px 24px rgba(0,0,0,.09)",zIndex:100}}>
+      {NAV.map(n=>{
+        const Icon=n.icon
+        return <button key={n.id} onClick={()=>setPage(n.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"3px 0",position:"relative"}}>
+          <Icon size={20} color={page===n.id?"#FF6B35":"#BBB"}/>
+          <span style={{fontSize:9,fontWeight:800,color:page===n.id?"#FF6B35":"#BBB",letterSpacing:.3,textTransform:"uppercase"}}>{n.label}</span>
+          {page===n.id&&<span style={{position:"absolute",bottom:-2,width:24,height:3,background:"#FF6B35",borderRadius:2}}/>}
+        </button>
+      })}
+    </nav>
+  </div>
+}
+
+function HomePage({inventory,expiring,recipes,setPage,prefs,setPrefs,suggestRecipes,loadR,weekPlan,grocery}){
+  const today=DAYS[new Date().getDay()===0?6:new Date().getDay()-1]
+  const tp=weekPlan?.[today]
+  const[exp,setExp]=useState(null)
+  return <div>
+    <div style={{background:"linear-gradient(135deg,#FF6B35 0%,#F7931E 60%,#FFB347 100%)",padding:"22px 18px 26px"}}>
+      <div style={{color:"rgba(255,255,255,.9)",fontSize:12,fontWeight:700,marginBottom:2}}>{new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</div>
+      <div style={{color:"white",fontSize:25,fontWeight:900,fontFamily:"'Playfair Display',serif",lineHeight:1.2,marginBottom:18}}>What's cooking today?</div>
+      <div style={{background:"rgba(255,255,255,.16)",borderRadius:18,padding:16,backdropFilter:"blur(8px)"}}>
+        <div style={{display:"flex",gap:7,marginBottom:9,flexWrap:"wrap"}}>
+          {MEAL_TYPES.map(m=><button key={m} onClick={()=>setPrefs(p=>({...p,mealType:m}))} style={{background:prefs.mealType===m?"white":"rgba(255,255,255,.22)",color:prefs.mealType===m?"#FF6B35":"white",border:"none",borderRadius:20,padding:"5px 13px",fontSize:12,fontWeight:800,cursor:"pointer",transition:"all .18s"}}>{m}</button>)}
+        </div>
+        <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+          {TIME_OPTIONS.map(t=><button key={t} onClick={()=>setPrefs(p=>({...p,time:t}))} style={{background:prefs.time===t?"white":"rgba(255,255,255,.22)",color:prefs.time===t?"#FF6B35":"white",border:"none",borderRadius:20,padding:"5px 10px",fontSize:12,fontWeight:800,cursor:"pointer"}}>{t}m</button>)}
+        </div>
+        <button onClick={suggestRecipes} disabled={loadR} style={{width:"100%",background:"white",color:loadR?"#AAA":"#FF6B35",border:"none",borderRadius:13,padding:"13px",fontSize:14,fontWeight:900,cursor:loadR?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxShadow:"0 4px 18px rgba(0,0,0,.18)",transition:"all .2s"}}>
+          {loadR?<><Spin/><span style={{marginLeft:8}}>Finding recipes...</span></>:"Suggest Meals with My Ingredients"}
+        </button>
+      </div>
+    </div>
+    <div style={{padding:"16px 16px 0"}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+        <StatCard icon={<Package size={24}/>} value={inventory.length} label="In Stock" color="#4CAF50" onClick={()=>setPage("inventory")}/>
+        <StatCard icon={<AlertTriangle size={24}/>} value={expiring.length} label="Expiring" color="#FF6B35" onClick={()=>setPage("alerts")}/>
+        <StatCard icon={<ShoppingCart size={24}/>} value={grocery.filter(g=>!g.done).length} label="To Buy" color="#2196F3" onClick={()=>setPage("grocery")}/>
+      </div>
+      {expiring.length>0&&<div style={{background:"linear-gradient(135deg,#FFF8E1,#FFF3E0)",borderRadius:18,padding:16,marginBottom:20,border:"1.5px solid #FFB347"}}>
+        <div style={{fontWeight:900,fontSize:14,color:"#E65100",marginBottom:10}}>Use These Soon!</div>
+        {expiring.map(item=>{const d=dl(item.expiry);return <div key={item.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"white",borderRadius:10,padding:"9px 13px",marginBottom:6,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+          <span style={{fontWeight:700,fontSize:13}}>{item.name}</span>
+          <span style={{background:d<=0?"#FF3B30":d===1?"#FF5722":"#FF9800",color:"white",borderRadius:8,padding:"2px 9px",fontSize:11,fontWeight:800}}>{d<=0?"Expired!":d===1?"1 day":`${d} days`}</span>
+        </div>})}
+        <button onClick={suggestRecipes} style={{width:"100%",marginTop:10,background:"linear-gradient(135deg,#FF6B35,#F7931E)",color:"white",border:"none",borderRadius:11,padding:"10px",fontSize:13,fontWeight:800,cursor:"pointer"}}>Cook These First</button>
+      </div>}
+      {tp&&<div style={{background:"white",borderRadius:18,padding:16,marginBottom:20,boxShadow:"0 3px 16px rgba(0,0,0,.07)",border:"1.5px solid #FFE5D5"}}>
+        <div style={{fontWeight:900,fontSize:14,color:"#333",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          Today's Meal Plan<span style={{background:"#FF6B35",color:"white",borderRadius:8,padding:"2px 10px",fontSize:11,fontWeight:800}}>{today}</span>
+        </div>
+        {[["breakfast"],["lunch"],["dinner"],["snack"]].map(([m])=>tp[m]&&<div key={m} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 0",borderBottom:"1px solid #F8F8F8"}}>
+          <div><div style={{fontSize:10,fontWeight:800,color:"#FF6B35",textTransform:"uppercase"}}>{m}</div><div style={{fontSize:13,fontWeight:800,color:"#333"}}>{tp[m]}</div></div>
+        </div>)}
+      </div>}
+      {recipes.length>0&&<div style={{marginBottom:20}}>
+        <div style={{fontWeight:900,fontSize:16,color:"#222",marginBottom:12}}>AI Suggested Recipes</div>
+        {recipes.map((r,i)=><RecipeCard key={i} recipe={r} expanded={exp===i} onToggle={()=>setExp(exp===i?null:i)}/>)}
+      </div>}
+      {!weekPlan&&<div onClick={()=>setPage("planner")} className="hov" style={{background:"linear-gradient(135deg,#667eea,#764ba2)",borderRadius:18,padding:22,marginBottom:16,color:"white",textAlign:"center"}}>
+        <div style={{fontWeight:900,fontSize:17,marginBottom:4}}>Plan Your Whole Week!</div>
+        <div style={{fontSize:13,opacity:.9}}>AI creates a balanced Mon-Sun meal plan</div>
+      </div>}
+      {inventory.length===0&&<div onClick={()=>setPage("inventory")} className="hov" style={{background:"linear-gradient(135deg,#4CAF50,#45B7AA)",borderRadius:18,padding:22,marginBottom:20,color:"white",textAlign:"center"}}>
+        <div style={{fontWeight:900,fontSize:17,marginBottom:4}}>Add Your Ingredients First</div>
+        <div style={{fontSize:13,opacity:.9}}>Tell us what's in your kitchen to get AI recipes</div>
+      </div>}
+    </div>
+  </div>
+}
+
+function InvPage({inventory,addInv,remInv}){
+  const[cat,setCat]=useState("Vegetables")
+  const[search,setSearch]=useState("")
+  const[showCustom,setShowCustom]=useState(false)
+  const[custom,setCustom]=useState({name:"",qty:"1",unit:"piece",expiry:""})
+  const[modal,setModal]=useState(null)
+  const[tq,setTq]=useState({qty:"1",unit:"piece",expiry:""})
+  const filtered=(DEFAULT_INGREDIENTS[cat]||[]).filter(i=>i.toLowerCase().includes(search.toLowerCase()))
+  const catItems=inventory.filter(i=>i.category===cat)
+  const isIn=n=>inventory.some(i=>i.name===n&&i.category===cat)
+  // Ask expiry for both Packed and Dairy
+  const needsExpiry = cat==="Packed"||cat==="Dairy"
+  return <div style={{padding:16}}>
+    <ST ch="My Kitchen"/><Sub ch={`${inventory.length} items across ${CATEGORIES.length} categories`}/>
+    <div style={{background:"white",borderRadius:13,padding:"10px 14px",display:"flex",alignItems:"center",gap:8,marginBottom:14,boxShadow:"0 2px 10px rgba(0,0,0,.05)",border:"1.5px solid #FFE5D5"}}>
+      <span>Search</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search ingredients..." style={{border:"none",outline:"none",flex:1,fontSize:14,fontFamily:"inherit",background:"transparent"}}/>
+    </div>
+    <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:8,marginBottom:16}}>
+      {CATEGORIES.map(c=><button key={c} onClick={()=>setCat(c)} style={{flexShrink:0,background:cat===c?"#FF6B35":"white",color:cat===c?"white":"#666",border:`1.5px solid ${cat===c?"#FF6B35":"#E8E8E8"}`,borderRadius:20,padding:"6px 14px",fontSize:11,fontWeight:800,cursor:"pointer",transition:"all .18s"}}>{c}</button>)}
+    </div>
+    {catItems.length>0&&<div style={{marginBottom:18}}>
+      <div style={{fontSize:11,fontWeight:800,color:"#FF6B35",textTransform:"uppercase",letterSpacing:1,marginBottom:9}}>In Stock ({catItems.length})</div>
+      {catItems.map(item=>{const d=item.expiry?dl(item.expiry):null;return <div key={item.id} style={{background:"white",borderRadius:13,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between",boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:`1.5px solid ${d!==null&&d<=3?"#FFB347":"#F0F0F0"}`}}>
+        <div><div style={{fontWeight:800,fontSize:14,color:"#222"}}>{item.name}</div><div style={{fontSize:12,color:"#999",marginTop:2}}>{item.qty} {item.unit}{d!==null&&<span style={{color:d<=0?"#FF3B30":d<=3?"#FF6B35":"#4CAF50",fontWeight:800,marginLeft:8}}>{d<=0?"Expired":`${d}d left`}</span>}</div></div>
+        <button onClick={()=>remInv(item.id)} style={{background:"#FFF0F0",border:"1px solid #FFD5D5",borderRadius:9,padding:"5px 11px",color:"#FF3B30",fontSize:12,fontWeight:800,cursor:"pointer"}}>Remove</button>
+      </div>})}
+    </div>}
+    <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Add Common Items</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+      {filtered.map(item=><button key={item} onClick={()=>{if(!isIn(item)){setModal({name:item,category:cat});setTq({qty:"1",unit:cat==="Packed"?"pack":"piece",expiry:""})}}} style={{background:isIn(item)?"#E8F5E9":"white",color:isIn(item)?"#2E7D32":"#555",border:`1.5px solid ${isIn(item)?"#81C784":"#E0E0E0"}`,borderRadius:20,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:isIn(item)?"default":"pointer",transition:"all .15s"}}>
+        {isIn(item)?"In Stock ":"+ "}{item}
+      </button>)}
+    </div>
+    <button onClick={()=>setShowCustom(!showCustom)} style={{width:"100%",background:"white",color:"#FF6B35",border:"2px dashed #FF6B35",borderRadius:13,padding:"12px",fontSize:14,fontWeight:800,cursor:"pointer",marginBottom:12}}>Add Custom Item</button>
+    {showCustom&&<div style={{background:"white",borderRadius:18,padding:16,boxShadow:"0 4px 24px rgba(0,0,0,.09)",border:"1.5px solid #FFE5D5",marginBottom:16}}>
+      <input value={custom.name} onChange={e=>setCustom(p=>({...p,name:e.target.value}))} placeholder="Item name (e.g. Bottle Gourd)" style={IS}/>
+      <div style={{display:"flex",gap:8}}>
+        <input value={custom.qty} onChange={e=>setCustom(p=>({...p,qty:e.target.value}))} placeholder="Qty" style={{...IS,flex:1}} type="number" min="0"/>
+        <select value={custom.unit} onChange={e=>setCustom(p=>({...p,unit:e.target.value}))} style={{...IS,flex:1}}>
+          {["piece","kg","g","L","ml","cup","pack","bunch"].map(u=><option key={u}>{u}</option>)}
+        </select>
+      </div>
+      {needsExpiry&&<div><label style={{fontSize:11,fontWeight:700,color:"#888",display:"block",marginBottom:4}}>Expiry Date</label><input value={custom.expiry} onChange={e=>setCustom(p=>({...p,expiry:e.target.value}))} type="date" style={IS}/></div>}
+      <button onClick={()=>{if(custom.name){addInv({...custom,category:cat});setCustom({name:"",qty:"1",unit:"piece",expiry:""});setShowCustom(false)}}} disabled={!custom.name} style={{width:"100%",background:custom.name?"#FF6B35":"#CCC",color:"white",border:"none",borderRadius:11,padding:"12px",fontSize:14,fontWeight:800,cursor:custom.name?"pointer":"not-allowed",transition:"all .2s"}}>Add to My Kitchen</button>
+    </div>}
+    {modal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:"white",borderRadius:"22px 22px 0 0",padding:"24px 20px 30px",width:"100%",maxWidth:480,animation:"up .3s ease"}}>
+        <div style={{fontWeight:900,fontSize:18,color:"#222",marginBottom:6}}>Add {modal.name}</div>
+        <div style={{fontSize:12,color:"#999",marginBottom:16}}>Set quantity{needsExpiry?" and expiry date":""}</div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <input value={tq.qty} onChange={e=>setTq(p=>({...p,qty:e.target.value}))} placeholder="Qty" style={{...IS,flex:1,margin:0}} type="number" min="0"/>
+          <select value={tq.unit} onChange={e=>setTq(p=>({...p,unit:e.target.value}))} style={{...IS,flex:1,margin:0}}>
+            {["piece","kg","g","L","ml","cup","pack","bunch"].map(u=><option key={u}>{u}</option>)}
+          </select>
+        </div>
+        {needsExpiry&&<div style={{marginBottom:12}}><label style={{fontSize:11,fontWeight:800,color:"#888",textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:6}}>Expiry Date</label><input value={tq.expiry} onChange={e=>setTq(p=>({...p,expiry:e.target.value}))} type="date" style={IS}/></div>}
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button onClick={()=>setModal(null)} style={{flex:1,background:"#F5F5F5",border:"none",borderRadius:13,padding:"13px",fontWeight:800,cursor:"pointer",color:"#666",fontSize:14}}>Cancel</button>
+          <button onClick={()=>{addInv({...modal,...tq});setModal(null)}} style={{flex:2,background:"linear-gradient(135deg,#FF6B35,#F7931E)",color:"white",border:"none",borderRadius:13,padding:"13px",fontWeight:900,cursor:"pointer",fontSize:14,boxShadow:"0 4px 16px rgba(255,107,53,.4)"}}>Add to Kitchen</button>
+        </div>
+      </div>
+    </div>}
+  </div>
+}
+
+function RecipesPage({recipes,prefs,setPrefs,suggestRecipes,loadR,addGroc}){
+  const[exp,setExp]=useState(null)
+  return <div style={{padding:16}}>
+    <ST ch="Recipes"/><Sub ch="AI-powered suggestions from your kitchen"/>
+    <div style={{background:"white",borderRadius:18,padding:16,marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)",border:"1.5px solid #FFE5D5"}}>
+      {[["Meal Type",MEAL_TYPES,"mealType"],["Diet",DIET_OPTIONS,"diet"]].map(([label,opts,key])=><div key={key} style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>{label}</div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{opts.map(m=><FB key={m} label={m} active={prefs[key]===m} onClick={()=>setPrefs(p=>({...p,[key]:m}))}/>)}</div>
+      </div>)}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Time Available</div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{TIME_OPTIONS.map(t=><FB key={t} label={`${t} min`} active={prefs.time===t} onClick={()=>setPrefs(p=>({...p,time:t}))}/>)}</div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Servings</div>
+        <div style={{display:"flex",gap:7}}>{[1,2,4,6].map(n=><FB key={n} label={`${n} ${n===1?"person":"people"}`} active={prefs.servings===n} onClick={()=>setPrefs(p=>({...p,servings:n}))}/>)}</div>
+      </div>
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Prioritize Ingredient?</div>
+        <input value={prefs.priority} onChange={e=>setPrefs(p=>({...p,priority:e.target.value}))} placeholder="e.g. Spinach, Paneer, Tomato..." style={IS}/>
+      </div>
+      <button onClick={suggestRecipes} disabled={loadR} style={{width:"100%",background:loadR?"#FFCBB8":"linear-gradient(135deg,#FF6B35,#F7931E)",color:"white",border:"none",borderRadius:13,padding:"14px",fontSize:15,fontWeight:900,cursor:loadR?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:9,boxShadow:"0 4px 18px rgba(255,107,53,.35)",transition:"all .2s"}}>
+        {loadR?<><Spin w/><span style={{marginLeft:8}}>AI is cooking ideas...</span></>:"Get AI Recipe Suggestions"}
+      </button>
+    </div>
+    {recipes.length===0&&!loadR&&<div style={{textAlign:"center",padding:"48px 20px"}}>
+      <div style={{fontWeight:800,fontSize:16,color:"#888",marginBottom:6}}>No suggestions yet</div>
+      <div style={{fontSize:13,color:"#BBB"}}>Add ingredients to inventory then tap "Get AI Suggestions"</div>
+    </div>}
+    {recipes.map((r,i)=><RecipeCard key={i} recipe={r} expanded={exp===i} onToggle={()=>setExp(exp===i?null:i)} addToGrocery={addGroc}/>)}
+  </div>
+}
+
+function PlannerPage({weekPlan,planWeek,loadW,profile,setProfile}){
+  const[ad,setAd]=useState(DAYS[new Date().getDay()===0?6:new Date().getDay()-1])
+  const mc={breakfast:"#FFF3E0",lunch:"#E8F5E9",dinner:"#E3F2FD",snack:"#F3E5F5"}
+  return <div style={{padding:16}}>
+    <ST ch="Weekly Planner"/><Sub ch="AI-generated meal schedule for your family"/>
+    <div style={{background:"white",borderRadius:18,padding:16,marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,.06)",border:"1.5px solid #FFE5D5"}}>
+      <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Your Preferences</div>
+      <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:12}}>{DIET_OPTIONS.map(d=><FB key={d} label={d} active={profile.diet===d} onClick={()=>setProfile(p=>({...p,diet:d}))}/>)}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+        <span style={{fontSize:13,fontWeight:700,color:"#666",whiteSpace:"nowrap"}}>Family size:</span>
+        <div style={{display:"flex",gap:6}}>{[1,2,3,4,5,6].map(n=><FB key={n} label={n} active={profile.people===n} onClick={()=>setProfile(p=>({...p,people:n}))}/>)}</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:13,fontWeight:700,color:"#666",whiteSpace:"nowrap"}}>Max cook time:</span>
+        <div style={{display:"flex",gap:6}}>{[20,30,45,60].map(t=><FB key={t} label={`${t}m`} active={profile.cookTime===t} onClick={()=>setProfile(p=>({...p,cookTime:t}))}/>)}</div>
+      </div>
+    </div>
+    <button onClick={planWeek} disabled={loadW} style={{width:"100%",background:loadW?"#B0A8D8":"linear-gradient(135deg,#667eea,#764ba2)",color:"white",border:"none",borderRadius:16,padding:"16px",fontSize:16,fontWeight:900,cursor:loadW?"not-allowed":"pointer",marginBottom:20,display:"flex",alignItems:"center",justifyContent:"center",gap:10,boxShadow:"0 6px 24px rgba(102,126,234,.45)",transition:"all .2s"}}>
+      {loadW?<><Spin w/><span style={{marginLeft:8}}>Creating your week plan...</span></>:weekPlan?"Regenerate Week Plan":"Plan My Week with AI"}
+    </button>
+    {weekPlan&&<>
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:16}}>
+        {DAYS.map(day=><button key={day} onClick={()=>setAd(day)} style={{flexShrink:0,background:ad===day?"#FF6B35":"white",color:ad===day?"white":"#666",border:`1.5px solid ${ad===day?"#FF6B35":"#E0E0E0"}`,borderRadius:13,padding:"8px 14px",fontSize:12,fontWeight:800,cursor:"pointer",transition:"all .18s"}}>{day.slice(0,3)}</button>)}
+      </div>
+      {weekPlan[ad]&&<div style={{background:"white",borderRadius:18,overflow:"hidden",boxShadow:"0 3px 16px rgba(0,0,0,.07)",marginBottom:20,border:"1.5px solid #FFE5D5"}}>
+        <div style={{background:"linear-gradient(135deg,#FF6B35,#F7931E)",padding:"18px 20px"}}>
+          <div style={{fontWeight:900,fontSize:20,color:"white"}}>{ad}</div>
+          <div style={{fontSize:12,color:"rgba(255,255,255,.85)",fontWeight:600}}>Complete Meal Schedule</div>
+        </div>
+        {Object.entries(mc).map(([meal,bg])=>weekPlan[ad][meal]&&<div key={meal} style={{padding:"16px 20px",background:bg,borderBottom:"1.5px solid rgba(0,0,0,.04)"}}>
+          <div style={{fontSize:10,fontWeight:800,color:"#888",textTransform:"uppercase",letterSpacing:.8,marginBottom:4}}>{meal}</div>
+          <div style={{fontWeight:900,fontSize:16,color:"#222"}}>{weekPlan[ad][meal]}</div>
+        </div>)}
+      </div>}
+      <div style={{marginBottom:20}}>
+        <div style={{fontWeight:900,fontSize:15,color:"#222",marginBottom:12}}>Full Week Overview</div>
+        {DAYS.map(day=>weekPlan[day]&&<div key={day} onClick={()=>setAd(day)} className="hov" style={{background:"white",borderRadius:13,padding:"12px 16px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,.04)",cursor:"pointer",border:`1.5px solid ${ad===day?"#FF6B35":"#F0F0F0"}`,transition:"border-color .2s"}}>
+          <div style={{fontWeight:800,fontSize:13,color:"#FF6B35",marginBottom:5}}>{day}</div>
+          <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+            {["breakfast","lunch","dinner"].map(m=>weekPlan[day][m]&&<span key={m} style={{fontSize:12,color:"#555"}}><b>{m[0].toUpperCase()+m.slice(1)}:</b> {weekPlan[day][m]}</span>)}
+          </div>
+        </div>)}
+      </div>
+    </>}
+    {!weekPlan&&!loadW&&<div style={{textAlign:"center",padding:"40px 20px"}}>
+      <div style={{fontWeight:700,fontSize:16,color:"#888",marginBottom:6}}>No plan generated yet</div>
+      <div style={{fontSize:13,color:"#BBB"}}>Set your preferences above and click "Plan My Week"</div>
+    </div>}
+  </div>
+}
+
+function GrocPage({grocery,togGroc,remGroc,addGroc,addInv}){
+  const[ni,setNi]=useState("")
+  // Stock modal state
+  const[stockModal,setStockModal]=useState(null)
+  const[sq,setSq]=useState({qty:"1",unit:"piece",expiry:"",category:"Others"})
+  const pending=grocery.filter(g=>!g.done)
+  const done=grocery.filter(g=>g.done)
+  const add=()=>{if(ni.trim()){addGroc(ni.trim());setNi("")}}
+
+  const openStock=(item)=>{
+    setStockModal(item)
+    setSq({qty:"1",unit:"piece",expiry:"",category:"Others"})
+  }
+
+  const confirmStock=()=>{
+    addInv({name:stockModal.name,category:sq.category,qty:sq.qty,unit:sq.unit,expiry:sq.expiry})
+    remGroc(stockModal.id)
+    setStockModal(null)
+  }
+
+  // Show expiry field if category is Packed or Dairy
+  const needsExpiry = sq.category==="Packed"||sq.category==="Dairy"
+
+  return <div style={{padding:16}}>
+    <ST ch="Grocery List"/><Sub ch={`${pending.length} items to buy · ${done.length} purchased`}/>
+    <div style={{background:"white",borderRadius:14,padding:"12px 16px",marginBottom:16,display:"flex",gap:10,boxShadow:"0 2px 12px rgba(0,0,0,.06)",border:"1.5px solid #FFE5D5"}}>
+      <input value={ni} onChange={e=>setNi(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Add item to list..." style={{flex:1,border:"none",outline:"none",fontSize:14,fontFamily:"inherit",background:"transparent"}}/>
+      <button onClick={add} disabled={!ni.trim()} style={{background:ni.trim()?"#FF6B35":"#DDD",color:"white",border:"none",borderRadius:10,padding:"8px 16px",fontWeight:800,cursor:ni.trim()?"pointer":"not-allowed",fontSize:14,transition:"all .2s"}}>Add</button>
+    </div>
+    {grocery.length===0&&<div style={{textAlign:"center",padding:"52px 20px"}}>
+      <div style={{fontWeight:700,fontSize:16,color:"#888",marginBottom:6}}>Your list is empty!</div>
+      <div style={{fontSize:13,color:"#BBB"}}>Add items manually or from recipe suggestions</div>
+    </div>}
+    {pending.length>0&&<div style={{marginBottom:20}}>
+      <div style={{fontSize:11,fontWeight:800,color:"#FF6B35",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>To Buy ({pending.length})</div>
+      {pending.map(item=><div key={item.id} style={{background:"white",borderRadius:13,padding:"14px 16px",marginBottom:8,display:"flex",alignItems:"center",gap:12,boxShadow:"0 2px 8px rgba(0,0,0,.05)",border:"1.5px solid #F0F0F0"}}>
+        <button onClick={()=>togGroc(item.id)} style={{width:22,height:22,borderRadius:"50%",border:"2px solid #FF6B35",background:"none",cursor:"pointer",flexShrink:0,transition:"all .2s"}}/>
+        <span style={{flex:1,fontWeight:700,fontSize:14,color:"#333"}}>{item.name}</span>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>openStock(item)} style={{background:"#E8F5E9",border:"1px solid #81C784",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:800,color:"#2E7D32",cursor:"pointer"}}>+Stock</button>
+          <button onClick={()=>remGroc(item.id)} style={{background:"#FFF0F0",border:"1px solid #EF9A9A",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:800,color:"#C62828",cursor:"pointer"}}>Remove</button>
+        </div>
+      </div>)}
+    </div>}
+    {done.length>0&&<div>
+      <div style={{fontSize:11,fontWeight:800,color:"#4CAF50",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Purchased ({done.length})</div>
+      {done.map(item=><div key={item.id} style={{background:"#F9F9F9",borderRadius:13,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",gap:12,opacity:.65,border:"1.5px solid #F0F0F0"}}>
+        <button onClick={()=>togGroc(item.id)} style={{width:22,height:22,borderRadius:"50%",background:"#4CAF50",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"white",fontSize:13,fontWeight:900,flexShrink:0}}>✓</button>
+        <span style={{flex:1,textDecoration:"line-through",fontSize:14,color:"#AAA"}}>{item.name}</span>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>openStock(item)} style={{background:"#E8F5E9",border:"1px solid #81C784",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:800,color:"#2E7D32",cursor:"pointer"}}>+Stock</button>
+          <button onClick={()=>remGroc(item.id)} style={{background:"#FFF0F0",border:"1px solid #EF9A9A",borderRadius:8,padding:"4px 9px",fontSize:11,fontWeight:800,color:"#C62828",cursor:"pointer"}}>Remove</button>
+        </div>
+      </div>)}
+    </div>}
+
+    {/* Stock Modal */}
+    {stockModal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:"white",borderRadius:"22px 22px 0 0",padding:"24px 20px 30px",width:"100%",maxWidth:480,animation:"up .3s ease"}}>
+        <div style={{fontWeight:900,fontSize:18,color:"#222",marginBottom:4}}>Add to Stock</div>
+        <div style={{fontSize:13,color:"#999",fontWeight:600,marginBottom:18}}>{stockModal.name}</div>
+
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Category</div>
+        <select value={sq.category} onChange={e=>setSq(p=>({...p,category:e.target.value,expiry:""}))} style={{...IS}}>
+          {CATEGORIES.map(c=><option key={c}>{c}</option>)}
+        </select>
+
+        <div style={{fontSize:11,fontWeight:800,color:"#AAA",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Quantity</div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <input value={sq.qty} onChange={e=>setSq(p=>({...p,qty:e.target.value}))} placeholder="Qty" style={{...IS,flex:1,margin:0}} type="number" min="0"/>
+          <select value={sq.unit} onChange={e=>setSq(p=>({...p,unit:e.target.value}))} style={{...IS,flex:1,margin:0}}>
+            {["piece","kg","g","L","ml","cup","pack","bunch"].map(u=><option key={u}>{u}</option>)}
+          </select>
+        </div>
+
+        {needsExpiry&&<div style={{marginBottom:12}}>
+          <label style={{fontSize:11,fontWeight:800,color:"#888",textTransform:"uppercase",letterSpacing:.8,display:"block",marginBottom:6}}>Expiry Date</label>
+          <input value={sq.expiry} onChange={e=>setSq(p=>({...p,expiry:e.target.value}))} type="date" style={IS}/>
+        </div>}
+
+        <div style={{display:"flex",gap:10,marginTop:8}}>
+          <button onClick={()=>setStockModal(null)} style={{flex:1,background:"#F5F5F5",border:"none",borderRadius:13,padding:"13px",fontWeight:800,cursor:"pointer",color:"#666",fontSize:14}}>Cancel</button>
+          <button onClick={confirmStock} style={{flex:2,background:"linear-gradient(135deg,#FF6B35,#F7931E)",color:"white",border:"none",borderRadius:13,padding:"13px",fontWeight:900,cursor:"pointer",fontSize:14,boxShadow:"0 4px 16px rgba(255,107,53,.4)"}}>Add to Kitchen</button>
+        </div>
+      </div>
+    </div>}
+  </div>
+}
+
+function AlertsPage({expiring,inventory}){
+  const all=inventory.filter(i=>i.expiry)
+  const expired=all.filter(i=>dl(i.expiry)<=0)
+  const urgent=all.filter(i=>{const d=dl(i.expiry);return d===1})
+  const warn=all.filter(i=>{const d=dl(i.expiry);return d>=2&&d<=3})
+  const safe=all.filter(i=>{const d=dl(i.expiry);return d>3})
+  const Sec=({title,items,dot,bg})=>items.length===0?null:<div style={{marginBottom:22}}>
+    <div style={{fontSize:11,fontWeight:800,textTransform:"uppercase",letterSpacing:1,color:"#888",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+      <span style={{width:10,height:10,borderRadius:"50%",background:dot,display:"inline-block"}}/>{title} ({items.length})
+    </div>
+    {items.map(item=>{const d=dl(item.expiry);return <div key={item.id} style={{background:bg||"white",borderRadius:14,padding:"14px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",boxShadow:"0 2px 10px rgba(0,0,0,.05)",border:`1.5px solid ${dot}33`}}>
+      <div>
+        <div style={{fontWeight:800,fontSize:14,color:"#222"}}>{item.name}</div>
+        <div style={{fontSize:12,color:"#999",marginTop:2}}>{item.qty} {item.unit} · Expires {new Date(item.expiry).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"})}</div>
+      </div>
+      <span style={{background:dot,color:"white",borderRadius:9,padding:"4px 11px",fontSize:11,fontWeight:900,whiteSpace:"nowrap"}}>{d<=0?"Expired!":d===1?"1 day":`${d} days`}</span>
+    </div>})}
+  </div>
+  return <div style={{padding:16}}>
+    <ST ch="Expiry Alerts"/><Sub ch={`${all.length} tracked items · ${expired.length+urgent.length+warn.length} need attention`}/>
+    {expired.length===0&&urgent.length===0&&warn.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+      <div style={{fontWeight:900,fontSize:18,color:"#4CAF50",marginBottom:8}}>All Good!</div>
+      <div style={{fontSize:13,color:"#BBB",lineHeight:1.7}}>No items expiring soon.<br/>Add packed or dairy items with expiry dates<br/>in Inventory to start tracking.</div>
+    </div>}
+    <Sec title="Expired" items={expired} dot="#E53935" bg="#FFF5F5"/>
+    <Sec title="Expires Tomorrow" items={urgent} dot="#FF5722" bg="#FFF8F0"/>
+    <Sec title="Expiring in 2-3 Days" items={warn} dot="#FFB347" bg="#FFFBF0"/>
+    {safe.length>0&&<div>
+      <div style={{fontSize:11,fontWeight:800,color:"#4CAF50",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Safe ({safe.length})</div>
+      {safe.map(item=>{const d=dl(item.expiry);return <div key={item.id} style={{background:"white",borderRadius:14,padding:"12px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1.5px solid #F0F0F0",opacity:.8}}>
+        <div><div style={{fontWeight:700,fontSize:14,color:"#333"}}>{item.name}</div><div style={{fontSize:12,color:"#999"}}>{new Date(item.expiry).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"2-digit"})}</div></div>
+        <span style={{background:"#E8F5E9",color:"#2E7D32",borderRadius:9,padding:"4px 11px",fontSize:11,fontWeight:800}}>{d} days</span>
+      </div>})}
+    </div>}
+  </div>
+}
