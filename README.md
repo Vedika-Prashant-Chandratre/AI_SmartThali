@@ -1,70 +1,115 @@
-# Getting Started with Create React App
+# 🍽️ AI SmartThali
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> An AI-powered smart cooking assistant that helps users decide **"What should I cook today?"** by generating personalized recipes based on available ingredients, cooking time, dietary preferences, and nutritional requirements.
 
-## Available Scripts
+## 📌 Overview
 
-In the project directory, you can run:
+AI SmartThali is an intelligent meal planning platform that simplifies daily cooking decisions using AI. It recommends recipes based on the ingredients already available at home, helping users save time, reduce food wastage, and maintain a healthy lifestyle.
 
-### `npm start`
+The application also provides smart inventory management, expiry tracking, grocery list generation, weekly meal planning, and nutritional analysis, making it a complete kitchen assistant.
+<img width="1536" height="1024" alt="ChatGPT Image Mar 19, 2026, 02_37_11 PM" src="https://github.com/user-attachments/assets/8ddf253c-2a44-4df6-ad36-1232e70e649a" />
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## ✨ Features
 
-### `npm test`
+- 🤖 AI-powered recipe recommendations
+- 🥗 Personalized meal planning
+- 📅 Weekly meal planner
+- 🥕 Ingredient-based recipe generation
+- ⏱️ Considers cooking time and meal type
+- 🥬 Supports Vegetarian, Vegan & Non-Vegetarian diets
+- 📦 Smart kitchen inventory management
+- ⏰ Expiry date tracking with alerts
+- 🛒 Dynamic grocery list generation
+- 🍎 Nutritional analysis for every meal
+- 💡 Personalized recommendations based on user preferences
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## 🛠️ Tech Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Frontend
+- React.js
+- Material UI
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Backend
+- Node.js
+- Express.js
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### AI
+- Google Gemini API
+- Groq API
 
-### `npm run eject`
+### Database
+- MongoDB
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## ⚙️ How It Works
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1. Enter available ingredients.
+2. Select meal type and cooking time.
+3. Choose dietary preferences.
+4. AI analyzes the inputs.
+5. Receive personalized recipe recommendations.
+6. View nutrition information.
+7. Manage inventory and receive expiry alerts.
+8. Generate grocery lists automatically.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 🚀 Future Enhancements
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- AI-powered personalized diet plans
+- Budget-aware meal planning
+- Hospital & Nutritionist integration
+- Voice assistant support
+- Barcode scanning for inventory
+- Smart kitchen automation
+- Multi-language support
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 🎯 Target Users
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+- Working professionals
+- Families
+- Students
+- Beginner cooks
+- Health-conscious individuals
+- Fitness enthusiasts
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 📈 Impact
 
-### Making a Progressive Web App
+- Reduces food wastage
+- Saves meal planning time
+- Encourages healthy eating
+- Simplifies grocery management
+- Makes cooking smarter with AI
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## 📚 Skills Learned
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+During the development of AI SmartThali, I gained hands-on experience in:
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Artificial Intelligence (AI)
+- Prompt Engineering
+- Google Gemini API Integration
+- REST API Development
+- React.js Development
+- Node.js & Express.js
+- MongoDB Database Design
+- Full Stack Web Development
+- Material UI
+- State Management in React
+- Inventory Management Systems
+- Nutrition Data Processing
+- CRUD Operations
+- API Integration
+- Responsive UI Design
+- Git & GitHub
+- Team Collaboration
+- Problem Solving
+- Software Architecture Design
